@@ -1,4 +1,4 @@
-# PythonAgentAI
+# EchoSynergy
 
 add .env file to the root level of the project with the following:
 `REPLICATE_API_TOKEN=xxxxx`
