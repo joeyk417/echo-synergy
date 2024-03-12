@@ -3,10 +3,10 @@ import os
 from pdf import PDFIndexer
 from llama_index.core import Settings
 from llama_index.llms.replicate import Replicate
-
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from transformers import AutoTokenizer
 from llama_index.llms.replicate import Replicate
+from prompts import system_prompt, query_wrapper_prompt
 
 load_dotenv()
 
@@ -44,12 +44,16 @@ load_dotenv()
 LLAMA_13B_V2_CHAT = "a16z-infra/llama13b-v2-chat:df7690f1994d94e96ad9d568eac121aecf50684a0b0963b25a41cc40061269e5"
 
 # set the LLM
+system_prompt = "Your system prompt here"  # Replace "Your system prompt here" with the desired value
+
 llama2_7b_chat = "meta/llama-2-7b-chat:8e6975e5ed6174911a6ff3d60540dfd4844201974602551e10e9e87ab143d81e"
 Settings.llm = Replicate(
     model=llama2_7b_chat,
     temperature=0.01,
-    system_prompt="You are a Q&A assistant. Your goal is to answer questions as accurately as possible is the instructions and context provided.",
+    system_prompt=system_prompt,
+    query_wrapper_prompt=query_wrapper_prompt,
     additional_kwargs={"top_p": 1, "max_new_tokens": 300},
+    is_chat_model=True,
 )
 
 # set tokenizer to match LLM
