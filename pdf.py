@@ -1,5 +1,5 @@
 import os
-from llama_index.core import StorageContext, VectorStoreIndex, load_index_from_storage
+from llama_index.core import StorageContext, VectorStoreIndex, load_index_from_storage, PromptHelper
 from llama_index.core.service_context import ServiceContext
 from llama_index.readers.file import PDFReader
 
@@ -14,10 +14,20 @@ class PDFIndexer:
         if not os.path.exists(self.index_name):
             print("building index", self.index_name)
             
+            # define prompt helper
+            # set maximum input size
+            max_input_size = 2048
+            # set number of output tokens
+            num_output = 256
+            # set maximum chunk overlap
+            max_chunk_overlap = 0.2
+
+            prompt_helper = PromptHelper(max_input_size, num_output, max_chunk_overlap)
+            
             index = VectorStoreIndex.from_documents(
                 data, 
                 show_progress=True,
-                service_context=ServiceContext.from_defaults(llm=self.llm, embed_model=self.embedded_model)
+                ervice_context=ServiceContext.from_defaults(llm=self.llm, embed_model=self.embedded_model, prompt_helper=prompt_helper)
                 )
             index.storage_context.persist(persist_dir=self.index_name)
         else:
