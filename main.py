@@ -155,19 +155,19 @@ for question in question_list:
     print("Answer: ", answer)
     print("--------------------------------------------------\n\n")
 
-pdf_indexer = PDFIndexer("Basicsofpharmacy", llm_question_gen, embeddings)
-canada_engine = pdf_indexer.index_pdf(os.path.join("data", "Basicsofpharmacy.pdf"))
+# pdf_indexer = PDFIndexer("Basicsofpharmacy", llm_question_gen, embeddings)
+# canada_engine = pdf_indexer.index_pdf(os.path.join("data", "Basicsofpharmacy.pdf"))
 
-while (answer := input("Conversation: Enter an Answer (q to quit): ")) != "q":
-    start_time = datetime.datetime.now()
+# while (answer := input("Conversation: Enter an Answer (q to quit): ")) != "q":
+#     start_time = datetime.datetime.now()
 
-    question = canada_engine.query(answer)
+#     question = canada_engine.query(answer)
 
-    end_time = datetime.datetime.now()
-    execution_time = end_time - start_time
+#     end_time = datetime.datetime.now()
+#     execution_time = end_time - start_time
 
-    print("Conversation:", question)
-    print("Execution time:", execution_time.total_seconds())
+#     print("Conversation:", question)
+#     print("Execution time:", execution_time.total_seconds())
 
     # Create a directory for storing answers
 # answers_dir = os.path.join(tempfile.gettempdir(), "answers")
