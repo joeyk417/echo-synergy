@@ -6,6 +6,8 @@ import datetime
 # import streamlit as st
 from dotenv import load_dotenv
 
+from pdf import PDFIndexer
+
 # from transformers import AutoTokenizer
 # from llama_index.core import Settings, ServiceContext, SimpleDirectoryReader
 # from llama_index.embeddings.huggingface import HuggingFaceEmbedding
@@ -153,16 +155,19 @@ for question in question_list:
     print("Answer: ", answer)
     print("--------------------------------------------------\n\n")
 
-# while (prompt := input("Enter a prompt (q to quit): ")) != "q":
-#     start_time = datetime.datetime.now()
+pdf_indexer = PDFIndexer("Basicsofpharmacy", llm_question_gen, embeddings)
+canada_engine = pdf_indexer.index_pdf(os.path.join("data", "Basicsofpharmacy.pdf"))
 
-#     result = canada_engine.query(prompt)
+while (answer := input("Conversation: Enter an Answer (q to quit): ")) != "q":
+    start_time = datetime.datetime.now()
 
-#     end_time = datetime.datetime.now()
-#     execution_time = end_time - start_time
+    question = canada_engine.query(answer)
 
-#     print(result)
-#     print("Execution time:", execution_time.total_seconds())
+    end_time = datetime.datetime.now()
+    execution_time = end_time - start_time
+
+    print("Conversation:", question)
+    print("Execution time:", execution_time.total_seconds())
 
     # Create a directory for storing answers
 # answers_dir = os.path.join(tempfile.gettempdir(), "answers")
