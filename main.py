@@ -2,10 +2,11 @@
 import os
 # import tempfile
 # import datetime
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 
 # import streamlit as st
 from dotenv import load_dotenv
+from typing import List
 
 # from pdf import PDFIndexer
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -17,15 +18,10 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import Chroma
 from langchain.llms import Replicate
 from langchain.prompts import PromptTemplate
-from langchain.callbacks import AsyncIteratorCallbackHandler
-from langchain.schema import HumanMessage
 
 from pydantic import BaseModel
 
-import asyncio
-from typing import AsyncIterable
 
-from fastapi.responses import StreamingResponse
 
 my_secret = os.environ['REPLICATE_API_TOKEN']
 
@@ -45,6 +41,19 @@ load_dotenv()
 
 app = FastAPI()
 
+# In a real application, this could be a database or cache
+question_storage: List[str] = []
+
+def generate_questions():
+  # Placeholder for the actual logic to generate questions
+  questions = question_gen_chain.run(docs_question_gen)
+  question_storage.extend(questions)
+  # You would then save these questions to a database or cache
+
+@app.post("/start-question-generation/")
+async def start_question_generation(background_tasks: BackgroundTasks):
+  background_tasks.add_task(generate_questions)
+  return {"message": "Question generation started in the background"}
 
 class Message(BaseModel):
   content: str
@@ -200,9 +209,7 @@ async def read_item(item_id: str):
 async def process_questions():
   # Ensure questions are generated
   try:
-    questions = question_gen_chain.run(
-        docs_question_gen)  # This line generates your questions
-    question_list = questions.split("\n")
+    question_list = question_storage
   except Exception as e:
     raise HTTPException(status_code=500, detail=str(e))
 
