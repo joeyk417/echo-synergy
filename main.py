@@ -2,6 +2,7 @@
 import os
 import tempfile
 import datetime
+from fastapi import FastAPI
 
 # import streamlit as st
 from dotenv import load_dotenv
@@ -31,6 +32,8 @@ from langchain.prompts import PromptTemplate
 
 # Initialize environment and set up for Windows asyncio compatibility
 load_dotenv()
+
+app = FastAPI()
 
 # prompt_template_questions = """
 # You are an expert in creating practice questions based on study material.
@@ -151,9 +154,14 @@ question_list = questions.split("\n")
 # Answer each question and save to a file
 for question in question_list:
     print("Question: ", question)
-    answer = answer_gen_chain.run(question)
-    print("Answer: ", answer)
+    modalAnswer = answer_gen_chain.run(question)
+    print("Answer: ", modalAnswer)
     print("--------------------------------------------------\n\n")
+
+@app.get("/answers/{answer_id}")
+async def read_item(answer_id: str):
+    answer = answer_id
+    return {question}
 
 # pdf_indexer = PDFIndexer("Basicsofpharmacy", llm_question_gen, embeddings)
 # canada_engine = pdf_indexer.index_pdf(os.path.join("data", "Basicsofpharmacy.pdf"))
