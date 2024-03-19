@@ -1,6 +1,5 @@
 import os
 import random
-from replit import database
 from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from dotenv import load_dotenv
@@ -14,12 +13,21 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import Chroma
 from langchain.llms import Replicate
 from langchain.prompts import PromptTemplate
+from langchain.chains.combine_documents import create_stuff_documents_chain
 
+from langchain.chains import (
+    StuffDocumentsChain, LLMChain, ConversationalRetrievalChain
+)
+from langchain import hub
+from langchain.chains import create_retrieval_chain
 
 load_dotenv()
 
 my_secret = os.environ['REPLICATE_API_TOKEN']
 app = FastAPI()
+
+# Placeholder for storing conversation history
+conversation_history: List[str] = []
 
 # Task status tracker
 task_status: Dict[str, str] = {}
@@ -29,11 +37,24 @@ question_storage: List[str] = []
 
 class Question(BaseModel):
     text: str  # For receiving question text via POST request
-def generate_questions():
+
+# def generate_new_question(conversation_history):
+#       # Check if there is any conversation history
+#     # if not conversation_history:
+#     #     return "Good morning, What are the opening hours of the pharmacy, and are there any alternative or after-hours services available?"
+
+#     # Get the last question asked
+#     # last_question = conversation_history[-1]
+   
+#     follow_up_question = question_gen_chain.run(docs_question_gen)
+#     return follow_up_question
+
+def generate_questions(conversation_history):
   # Placeholder for the actual logic to generate questions
-  questions = question_gen_chain.run(docs_question_gen)
-  question_storage.extend(questions)
-  # You would then save these questions to a database or cache
+  question_gen_chain.run(docs_question_gen)
+
+def generate_new_questions(conversation_history):
+  question_new_gen_chain.run(docs_question_gen)
 
 class Message(BaseModel):
   content: str
@@ -82,6 +103,32 @@ REFINE_PROMPT_QUESTIONS = PromptTemplate(
     input_variables=["existing_answer", "text"],
     template=refine_template_questions,
 )
+
+# # This controls how the standalone question is generated.
+# # Should take `chat_history` and `question` as input variables.
+# ConversationTemplate = (
+#     # "Combine the chat history and follow up question into "
+#     # "a standalone question. Chat History: {chat_history}"
+#     # "Follow up question: {question}"
+#     "Can you play a role as a customer at Pharmacy. And I am a pharmacist. Can you ask me 1 short question as a customer based on our chat history"
+#     ------------
+#     {text}
+# ------------
+# )
+
+ConversationTemplate = """
+"Can you play a role as a customer at Pharmacy. And I am a pharmacist. Can you ask me 1 short question as a customer based on our chat history"
+------------
+{text}
+------------
+
+Given the new context, refine the original questions in English.
+If the context is not helpful, please provide the original questions.
+
+QUESTIONS:
+"""
+CONVERSATION_PROMPT_QUESTIONS = PromptTemplate(template=ConversationTemplate,
+                                  input_variables=["text"])
 # Load documents
 pdf_path = os.path.join("data", "Basicsofpharmacy.pdf")
 loader = PyPDFLoader(pdf_path)
@@ -90,7 +137,7 @@ data = loader.load()
 ## To do, load docs from .data folder
 # reader = SimpleDirectoryReader("./data")
 # documents = reader.load_data()
-print("documents loaded successfully.")
+# print("documents loaded successfully.")
 
 # Combine text from Document into one string for question generation
 text_question_gen = ""
@@ -130,8 +177,26 @@ question_gen_chain = load_summarize_chain(
     question_prompt=PROMPT_QUESTIONS,
     refine_prompt=REFINE_PROMPT_QUESTIONS,
 )
-# Run question generation chain
-questions = question_gen_chain.run(docs_question_gen)
+
+question_new_gen_chain = load_summarize_chain(
+    llm=llm_question_gen,
+    chain_type="refine",
+    verbose=True,
+    question_prompt=CONVERSATION_PROMPT_QUESTIONS,
+    refine_prompt=REFINE_PROMPT_QUESTIONS,
+)
+
+# Initialize NEXT question generation chain
+# new_question_gen_chain = load_summarize_chain(
+#     llm=llm_question_gen,
+#     chain_type="refine",
+#     verbose=True,
+#     question_prompt=CONVERSATION_PROMPT_QUESTIONS,
+#     refine_prompt=REFINE_PROMPT_QUESTIONS,
+# )
+# Run question generation chain (save billing)
+questions=""
+# questions = question_gen_chain.run(docs_question_gen)
 
 # Initialize Large Language Model for answer generation
 llm_answer_gen = Replicate(
@@ -148,11 +213,11 @@ llm_answer_gen = Replicate(
 embeddings = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2",
     model_kwargs={"device": "cpu"})
-print("HuggingFaceEmbeddings loaded successfully.")
+# print("HuggingFaceEmbeddings loaded successfully.")
 
 # Initialize vector store for answer generation
 vector_store = Chroma.from_documents(docs_question_gen, embeddings)
-print("Vector store loaded successfully.")
+# print("Vector store loaded successfully.")
 
 # Initialize retrieval chain for answer generation
 answer_gen_chain = RetrievalQA.from_chain_type(
@@ -165,7 +230,7 @@ question_list = questions.split("\n")
 
 # Answer each question and save to a file
 # for question in question_list:
-print("List of Questions are : ", question_list)
+# print("List of Questions are : ", question_list)
 #  print("Customer Question is : ", question)
 # modalAnswer = answer_gen_chain.run(question_list)
 #   print("Modal Answer is : ", modalAnswer)
@@ -197,10 +262,36 @@ with open(new_file_path, 'w') as new_file:
 print("--------------------------------------------------\n\n")
 print("-------------------Next Question------------------\n\n")
 
-with open('questions.txt') as f:
-    questions = f.readlines()
-    random_question = random.choice(questions)
-print(random_question)
+# Print the list of questions
+# for question in questions_list:
+# prompt = PromptTemplate.from_template(ConversationTemplate)
+# print("-------------------1------------------\n\n")
+# question_generator_chain = LLMChain(llm=llm_question_gen, prompt=prompt)
+# print("-------------------2------------------\n\n")
+# retrieval_qa_chat_prompt = hub.pull("langchain-ai/retrieval-qa-chat")
+# print("-------------------3------------------\n\n")
+# combine_docs_chain = create_stuff_documents_chain(llm_question_gen, retrieval_qa_chat_prompt)
+# print("-------------------4------------------\n\n")
+# # retriever = FAISS.load_local("vector_db", embeddings).as_retriever()
+# retriever = vector_store.as_retriever()
+# print("-------------------5------------------\n\n")
+# # conversationalRetrievalChain = create_stuff_documents_chain(
+# #     combine_docs_chain=combine_docs_chain,
+# #     retriever=retriever,
+# #     question_generator=question_generator_chain,
+# # )
+
+# conversationalRetrievalChain = create_retrieval_chain(retriever, combine_docs_chain)
+# print("-------------------6------------------\n\n")
+# # Run conversational question generation chain
+# nextQuestion = conversationalRetrievalChain.invoke({"input": "We will open from 9am to 7pm"})
+# print("-------------------7------------------\n\n")
+# print(nextQuestion)
+
+# with open('questions.txt') as f:
+#     questions = f.readlines()
+#     random_question = random.choice(questions)
+# print(random_question)
 
 # @app.post("/start-question-generation/")
 # async def start_question_generation(background_tasks: BackgroundTasks):
@@ -220,8 +311,59 @@ async def get_question():
     with open('questions.txt') as f:
      questions = f.readlines()
      random_question = random.choice(questions)
-     print(random_question)
+    #  print(random_question)
     return {"question": random_question}
+
+# Endpoint to receive and process the user's answer
+@app.post("/answer/")
+async def process_answer(answer: str):
+    # Ensure conversation_history is properly initialized as a list
+    global conversation_history
+    if not isinstance(conversation_history, list):
+        conversation_history = []
+
+    # Append the user's answer to the conversation history
+    conversation_history.append(answer)
+
+    # Generate a new question based on the conversation history
+    new_question = generate_questions(conversation_history)
+
+    # Return the new question to the user
+    return {"question": new_question}
+
+
+# Placeholder for generating a new question based on the context of the conversation
+# def generate_question(conversation_history):
+#     # Placeholder logic, replace with your actual logic
+#     return "What else would you like to know?"
+
+# Endpoint to receive the first question and start the conversation
+@app.get("/start/")
+async def start_conversation():
+    # Generate the first question
+    first_question = "Can you play a role as a customer at Pharmacy? And I am a pharmacist. Can you ask me one short question as a customer?"
+
+    # Return the first question to the user
+    return {"question": first_question}
+
+# Endpoint to receive the next question based on the previous answer
+@app.post("/next/")
+async def next_question(answer: str):
+   conversation_history.append(answer)
+# Generate the next question based on the conversation history
+   conversation_history.append(answer)
+# Generate the next question based on the conversation history
+   next_question = question_new_gen_chain.run(docs_question_gen)
+   questions_list = next_question.split("\n")  # Split by newline character
+
+# Filter out empty strings and non-question lines
+   questions_list = [
+    line.strip()
+    for line in questions_list
+    if line.strip() and line.strip().endswith("?")
+]
+   random_new_question = random.choice(questions_list)
+   return {"question": random_new_question}
 
 @app.post("/stream_chat/")
 async def process_questions():
@@ -231,14 +373,6 @@ async def process_questions():
   except Exception as e:
     raise HTTPException(status_code=500, detail=str(e))
   
-@app.post("/stream_chat/")
-async def process_questions():
-  # Ensure questions are generated
-  try:
-    question_list = question_storage
-  except Exception as e:
-    raise HTTPException(status_code=500, detail=str(e))
-
   # Process each question and collect answers
   answers = []
   for question in question_list:
