@@ -165,16 +165,14 @@ question_list = questions.split("\n")
 
 # Answer each question and save to a file
 # for question in question_list:
-# print("List of Questions are : ", question_list)
+print("List of Questions are : ", question_list)
 #  print("Customer Question is : ", question)
-#   modalAnswer = answer_gen_chain.run(question)
+# modalAnswer = answer_gen_chain.run(question_list)
 #   print("Modal Answer is : ", modalAnswer)
 f = open("questionsString.txt", "a")
 f.writelines(question_list)
-# print("--------------------------------------------------\n\n")
-# print("-------------------Next Question------------------\n\n")
+# f.writelines(modalAnswer)
 
-# Define the path to your file
 file_path = 'questionsString.txt'
 
 # Read the content of the file
@@ -196,6 +194,9 @@ new_file_path = 'questions.txt'
 with open(new_file_path, 'w') as new_file:
     new_file.write(formatted_content)
 
+print("--------------------------------------------------\n\n")
+print("-------------------Next Question------------------\n\n")
+
 @app.post("/start-question-generation/")
 async def start_question_generation(background_tasks: BackgroundTasks):
     task_id = str(uuid.uuid4())
@@ -209,13 +210,14 @@ async def get_task_status(task_id: str):
     status = task_status.get(task_id, "Not Found")
     return {"task_id": task_id, "status": status}
 
-@app.get("/questions/")
+@app.get("/question/")
 async def get_questions():
     # Returns the list of stored questions
-    #   db["questions"].append(question)
-    # for question in question_list:
-    question1 = (db["questions"][0])
-    return {"questions": question1}
+      file = open("questions.txt", "r")
+      question = file.read()
+      print(question)
+      file.close()
+      return {"question": question}
 
 @app.post("/stream_chat/")
 async def process_questions():
