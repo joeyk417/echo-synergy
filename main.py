@@ -1,5 +1,6 @@
 import os
 import random
+import uvicorn
 from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from dotenv import load_dotenv
@@ -160,7 +161,7 @@ docs_question_gen = [
 # Initialize Large Language Model for question generation
 llm_question_gen = Replicate(
     model=
-    "replicate/llama-2-70b-chat:58d078176e02c219e11eb4da5a02a7830a283b14cf8f94537af893ccff5ee781",
+    "meta/llama-2-7b-chat:f1d50bb24186c52daae319ca8366e53debdaa9e0ae7ff976e918df752732ccc4",
     is_chat_model=True,
     input={
         "temperature": 0.01,
@@ -195,13 +196,22 @@ question_new_gen_chain = load_summarize_chain(
 #     refine_prompt=REFINE_PROMPT_QUESTIONS,
 # )
 # Run question generation chain (save billing)
-questions=""
-# questions = question_gen_chain.run(docs_question_gen)
+file_path = 'questions.txt'
+ 
+# open the file in read mode
+with open(file_path, 'r') as file_obj:
+    # read first character
+    first_char = file_obj.read(1)
+ 
+    if not first_char:
+        questions = question_gen_chain.run(docs_question_gen)
+    else:
+        questions = ""
 
 # Initialize Large Language Model for answer generation
 llm_answer_gen = Replicate(
     model=
-    "replicate/llama-2-70b-chat:58d078176e02c219e11eb4da5a02a7830a283b14cf8f94537af893ccff5ee781",
+    "meta/llama-2-7b-chat:f1d50bb24186c52daae319ca8366e53debdaa9e0ae7ff976e918df752732ccc4",
     input={
         "temperature": 0.01,
         "max_length": 500,
@@ -306,6 +316,10 @@ print("-------------------Next Question------------------\n\n")
 #     status = task_status.get(task_id, "Not Found")
 #     return {"task_id": task_id, "status": status}
 
+@app.get("/")
+def root():
+   return {"hello world"}
+
 @app.get("/question/")
 async def get_question():
     with open('questions.txt') as f:
@@ -351,11 +365,10 @@ async def start_conversation():
 async def next_question(answer: str):
    conversation_history.append(answer)
 # Generate the next question based on the conversation history
-   conversation_history.append(answer)
-# Generate the next question based on the conversation history
    next_question = question_new_gen_chain.run(docs_question_gen)
+   print(next_question)
    questions_list = next_question.split("\n")  # Split by newline character
-
+   print(questions_list)
 # Filter out empty strings and non-question lines
    questions_list = [
     line.strip()
@@ -363,6 +376,7 @@ async def next_question(answer: str):
     if line.strip() and line.strip().endswith("?")
 ]
    random_new_question = random.choice(questions_list)
+   print(random_new_question)
    return {"question": random_new_question}
 
 @app.post("/stream_chat/")
@@ -486,3 +500,7 @@ async def process_questions():
 
 # if __name__ == "__main__":
 #     asyncio.run(main())
+
+# if __name__ == "__main__":
+#     uvicorn.run(app, host="0.0.0.0", port=8000)
+    
