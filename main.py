@@ -1,14 +1,10 @@
-# import asyncio
 import os
-# import tempfile
-# import datetime
+import uuid
+from replit import database
+from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-
-# import streamlit as st
 from dotenv import load_dotenv
-from typing import List
-
-# from pdf import PDFIndexer
+from typing import List, Dict
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.document_loaders import PyPDFLoader
 from langchain.docstore.document import Document
@@ -19,49 +15,28 @@ from langchain.vectorstores import Chroma
 from langchain.llms import Replicate
 from langchain.prompts import PromptTemplate
 
-from pydantic import BaseModel
 
-
-
-my_secret = os.environ['REPLICATE_API_TOKEN']
-
-# from transformers import AutoTokenizer
-# from llama_index.core import Settings, ServiceContext, SimpleDirectoryReader
-# from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-# from llama_index.llms.replicate import Replicate
-# # from llama_isysndex.core.evaluation import DatasetGenerator
-# from llama_index.core.llama_dataset.generator import RagDatasetGenerator
-# from llama_index.readers.file import PDFReader
-# import sys
-
-# from prompts import system_prompt, query_wrapper_prompt
-
-# Initialize environment and set up for Windows asyncio compatibility
 load_dotenv()
 
+my_secret = os.environ['REPLICATE_API_TOKEN']
 app = FastAPI()
+
+# Task status tracker
+task_status: Dict[str, str] = {}
 
 # In a real application, this could be a database or cache
 question_storage: List[str] = []
 
+class Question(BaseModel):
+    text: str  # For receiving question text via POST request
 def generate_questions():
   # Placeholder for the actual logic to generate questions
   questions = question_gen_chain.run(docs_question_gen)
   question_storage.extend(questions)
   # You would then save these questions to a database or cache
 
-@app.post("/start-question-generation/")
-async def start_question_generation(background_tasks: BackgroundTasks):
-  background_tasks.add_task(generate_questions)
-  return {"message": "Question generation started in the background"}
-
 class Message(BaseModel):
   content: str
-
-
-# prompt_template_questions = """
-# You are an expert in creating practice questions based on study material.
-# Your goal is to prepare a student for their exam. You do this by asking questions about the text below:
 
 prompt_template_questions = """
 You are an customer in a pharmacy. You will perform specific tasks: greeting the pharmacist, inquiring 
@@ -69,15 +44,15 @@ about medications, understanding prescription requirements, expressing gratitude
 interaction. You does not possess deep knowledge about medications or medical conditions and 
 should avoid discussing unrelated or random topics. All responses and queries from you should be 
 concise, limited to 1 or 2 sentences. Can you play a role as a customer at Pharmacy. 
-And I am a pharmacist. Can you ask me some questions as a customer?  You ask me questions one by one. So we will talk as real conversations?
+And I am a pharmacist. Can you ask me 10 potenial questions as a customer?  
 
 ------------
 {text}
 ------------
 
 Create questions that will you have as an customer in a pharmacy. Make sure not to lose any important information.
-Can you play a role as a customer at Pharmacy. And I am a pharmacist. Can you ask me some questions as a customer?  
-You ask me questions one by one. So we will talk as real conversations?
+Can you play a role as a customer at Pharmacy. And I am a pharmacist. Can you ask me one short question as a customer?  
+You will ask me 10 potenial questions. So we will talk as real conversations?
 
 QUESTIONS:
 """
@@ -92,7 +67,7 @@ interaction.
 We have received some practice questions to a certain extent: {existing_answer}.
 We have the option to refine the existing questions or add new ones.
 (only if necessary) with some more context below. Can you play a role as a customer at Pharmacy. And I am a pharmacist. Can you ask me some questions as a customer?  
-You ask me questions one by one. So we will talk as real conversations?
+You ask me 10 potenial questions. So we will talk as real conversations?
 ------------
 {text}
 ------------
@@ -107,11 +82,12 @@ REFINE_PROMPT_QUESTIONS = PromptTemplate(
     input_variables=["existing_answer", "text"],
     template=refine_template_questions,
 )
-
 # Load documents
 pdf_path = os.path.join("data", "Basicsofpharmacy.pdf")
 loader = PyPDFLoader(pdf_path)
 data = loader.load()
+
+## To do, load docs from .data folder
 # reader = SimpleDirectoryReader("./data")
 # documents = reader.load_data()
 print("documents loaded successfully.")
@@ -188,23 +164,67 @@ answer_gen_chain = RetrievalQA.from_chain_type(
 question_list = questions.split("\n")
 
 # Answer each question and save to a file
-for question in question_list:
-  print("Question: ", question)
-  modalAnswer = answer_gen_chain.run(question)
-  print("Answer: ", modalAnswer)
-  print("--------------------------------------------------\n\n")
+# for question in question_list:
+# print("List of Questions are : ", question_list)
+#  print("Customer Question is : ", question)
+#   modalAnswer = answer_gen_chain.run(question)
+#   print("Modal Answer is : ", modalAnswer)
+f = open("questionsString.txt", "a")
+f.writelines(question_list)
+# print("--------------------------------------------------\n\n")
+# print("-------------------Next Question------------------\n\n")
 
+# Define the path to your file
+file_path = 'questionsString.txt'
 
-@app.get("/")
-async def read_root():
-  return {"Hello": "World"}
+# Read the content of the file
+with open(file_path, 'r') as file:
+    content = file.read()
 
+# Splitting the content based on a pattern (e.g., digit followed by a dot for numbered list)
+import re
+questions = re.split(r'\d+\.', content)[1:]  # Skip the first split as it's before the first question
 
-@app.get("/items/{item_id}")
-async def read_item(item_id: str):
-  return
+# Add the question numbers back and format each question on a new line
+formatted_questions = [f"{i+1}. {question.strip()}" for i, question in enumerate(questions) if question.strip()]
 
+# Join the formatted questions with a newline character
+formatted_content = "\n".join(formatted_questions)
 
+# Optionally, save the formatted content to a new file
+new_file_path = 'questions.txt'
+with open(new_file_path, 'w') as new_file:
+    new_file.write(formatted_content)
+
+@app.post("/start-question-generation/")
+async def start_question_generation(background_tasks: BackgroundTasks):
+    task_id = str(uuid.uuid4())
+    task_status[task_id] = "Pending"
+    # Pass the documents to generate questions from as an argument
+    background_tasks.add_task(generate_questions, task_id, docs_question_gen)
+    return {"task_id": task_id, "message": "Question generation started in the background"}
+
+@app.get("/task-status/{task_id}")
+async def get_task_status(task_id: str):
+    status = task_status.get(task_id, "Not Found")
+    return {"task_id": task_id, "status": status}
+
+@app.get("/questions/")
+async def get_questions():
+    # Returns the list of stored questions
+    #   db["questions"].append(question)
+    # for question in question_list:
+    question1 = (db["questions"][0])
+    return {"questions": question1}
+
+@app.post("/stream_chat/")
+async def process_questions():
+  # Ensure questions are generated
+  try:
+    question_list = question_storage
+  except Exception as e:
+    raise HTTPException(status_code=500, detail=str(e))
+  
 @app.post("/stream_chat/")
 async def process_questions():
   # Ensure questions are generated
@@ -223,11 +243,18 @@ async def process_questions():
   # Return the list of question-answer pairs
   return {"responses": answers}
 
+  # Process each question and collect answers
+#   answers = []
+#   for question in question_list:
+#     if question.strip():  # Ensure question is not just whitespace
+#       answer = answer_gen_chain.run(question)  # Process the question
+#       answers.append({"question": question, "answer": answer})
 
-##########################
+#   # Return the list of question-answer pairs
+#   return {"responses": answers}
 
-##########################
 
+#################################################### OLD code for reference
 # pdf_indexer = PDFIndexer("Basicsofpharmacy", llm_question_gen, embeddings)
 # canada_engine = pdf_indexer.index_pdf(os.path.join("data", "Basicsofpharmacy.pdf"))
 
