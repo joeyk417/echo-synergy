@@ -1,5 +1,5 @@
 import os
-import uuid
+import random
 from replit import database
 from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException, BackgroundTasks
@@ -197,27 +197,31 @@ with open(new_file_path, 'w') as new_file:
 print("--------------------------------------------------\n\n")
 print("-------------------Next Question------------------\n\n")
 
-@app.post("/start-question-generation/")
-async def start_question_generation(background_tasks: BackgroundTasks):
-    task_id = str(uuid.uuid4())
-    task_status[task_id] = "Pending"
-    # Pass the documents to generate questions from as an argument
-    background_tasks.add_task(generate_questions, task_id, docs_question_gen)
-    return {"task_id": task_id, "message": "Question generation started in the background"}
+with open('questions.txt') as f:
+    questions = f.readlines()
+    random_question = random.choice(questions)
+print(random_question)
 
-@app.get("/task-status/{task_id}")
-async def get_task_status(task_id: str):
-    status = task_status.get(task_id, "Not Found")
-    return {"task_id": task_id, "status": status}
+# @app.post("/start-question-generation/")
+# async def start_question_generation(background_tasks: BackgroundTasks):
+#     task_id = str(uuid.uuid4())
+#     task_status[task_id] = "Pending"
+#     # Pass the documents to generate questions from as an argument
+#     background_tasks.add_task(generate_questions, task_id, docs_question_gen)
+#     return {"task_id": task_id, "message": "Question generation started in the background"}
+
+# @app.get("/task-status/{task_id}")
+# async def get_task_status(task_id: str):
+#     status = task_status.get(task_id, "Not Found")
+#     return {"task_id": task_id, "status": status}
 
 @app.get("/question/")
-async def get_questions():
-    # Returns the list of stored questions
-      file = open("questions.txt", "r")
-      question = file.read()
-      print(question)
-      file.close()
-      return {"question": question}
+async def get_question():
+    with open('questions.txt') as f:
+     questions = f.readlines()
+     random_question = random.choice(questions)
+     print(random_question)
+    return {"question": random_question}
 
 @app.post("/stream_chat/")
 async def process_questions():
