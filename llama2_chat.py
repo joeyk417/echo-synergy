@@ -33,9 +33,21 @@ chat_prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-messages = chat_prompt.format_messages(
-    subject="Can I take two different allergy medications at the same time, or would that be dangerous?", 
+subject = "Can I take two different allergy medications at the same time, or would that be dangerous?"
+start_messages = chat_prompt.format_messages(
+    subject=subject, 
     text="Hello, how can I help today?"
 )
-result = llm.predict_messages(messages)
+result = llm.predict_messages(start_messages)
 print(result.content)
+
+while (prompt := input("Enter a prompt (q to quit): ")) != "q":
+    print("\ntest if subject is being updated:", subject)
+    messages = chat_prompt.format_messages(
+    subject=subject, 
+    text=prompt
+    )
+    response = llm.predict_messages(messages)
+    print(response.content)
+    print("\n")
+    subject = response.content
