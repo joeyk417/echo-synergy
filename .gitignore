@@ -4,6 +4,6 @@ env/
 vrai/*
 ai/*
 __pycache__/*
-
+vector_store_test/*
 
 .DS_Store
