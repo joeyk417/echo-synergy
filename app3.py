@@ -17,8 +17,12 @@ You act as a customer, ask a question based on the chat history.
 Limit your responses to 1 or 2 sentences.
 Do not provide explanations or descriptions on medical topics.
 Directly say your health concern or ask a question as a customer.
-Do not say Sure, I'd be happy to help! As the customer, you will reply with what you would say.
+Response directly. Do not include wordings like 'Sure, I'll do my best to assist you!' or 'As the customer, you will reply with what you would say.' or 'I'd be happy to help! As the customer, I respond' or 'Sure, I'd be happy to help!'
 Do not provide expression.
+Reply only with your character's dialogue inside and nothing else. Do not write explanations.
+If you don't know the answer, you should say 'I'm not sure, I will check with my GP'.
+If you are unsure about the response, you should say 'It's ok, I will check with my GP'.
+If the pharmacist tell you to check with your GP, you should say 'Thanks, I will check with my GP'. And stop the conversation.
 
 {history}
 Human: {human_input}
@@ -57,7 +61,7 @@ while (prompt := input("Enter a prompt (q to quit): ")) != "q":
     start_time = datetime.datetime.now()
     
     #result = canada_engine.query(prompt)
-    refine_prompt = f"I want you to continue acting as a customer and answer {human_character} the question: {prompt}."
+    refine_prompt = f"I want you to continue acting as a customer and answer the human as {human_character} the question: {prompt}. I will type dialogue and you will with what the character should say and only reply your dialogue inside and nothing else. Do not write explanations."
     response = engine_chain.predict(human_input=refine_prompt)
     
     end_time = datetime.datetime.now()
