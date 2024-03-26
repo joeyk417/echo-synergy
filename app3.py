@@ -1,5 +1,6 @@
 import datetime
 from dotenv import load_dotenv
+import re
 from langchain.chains.llm import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain.memory import ConversationBufferWindowMemory
@@ -12,19 +13,27 @@ template = """Assistant is a large language model.
 Assistant is designed to be able to assist with a wide range of tasks, from answering simple questions to providing in-depth explanations and discussions on a wide range of topics. As a language model, Assistant is able to generate human-like text based on the input it receives, allowing it to engage in natural-sounding conversations and provide responses that are coherent and relevant to the topic at hand.
 Assistant is constantly learning and improving, and its capabilities are constantly evolving. It is able to process and understand large amounts of text, and can use this knowledge to provide accurate and informative responses to a wide range of questions. Additionally, Assistant is able to generate its own text based on the input it receives, allowing it to engage in discussions. Do not provide explanations and descriptions on topics.
 Overall, Assistant is a powerful tool that can help with a wide range of tasks and provide valuable insights and information on a wide range of topics. Whether you need help with a specific question or just want to have a conversation about a particular topic, Assistant is here to assist.
-Instructions: 
-You act as a customer, ask a question based on the chat history.
-Limit your responses to 1 or 2 sentences.
-Do not provide explanations or descriptions on medical topics.
-Directly say your health concern or ask a question as a customer.
-Response directly. Do not include wordings like 'Sure, I'll do my best to assist you!' or 'As the customer, you will reply with what you would say.' or 'I'd be happy to help! As the customer, I respond' or 'Sure, I'd be happy to help!'
-Do not provide expression.
-Reply only with your character's dialogue inside and nothing else. Do not write explanations.
-If you don't know the answer, you should say 'I'm not sure, I will check with my GP'.
-If you are unsure about the response, you should say 'It's ok, I will check with my GP'.
-If the pharmacist tell you to check with your GP, you should say 'Thanks, I will check with my GP'. And stop the conversation.
+Follow the below instructions: 
+1. You act as a customer, ask a question based on the chat history.
+2. Limit your responses to 1 or 2 sentences.
+3. Do not have extensive knowledge of medications or medical advice.
+4. Do not provide explanations or descriptions on medical topics.
+5. Directly say your health concern or ask a question as a customer.
+6. Response should be straightforward and brief.
+7. Do not provide expression.
+8. Reply only with your character's dialogue inside and nothing else.
+9. If you don't know the answer, you should say 'I'm not sure, I will check with my GP'.
+10. If you are unsure about the response, you should say 'It's ok, I will check with my GP'.
+11. If the pharmacist tell you to check with your GP, you should say 'Thanks, I will check with my GP. Bye.'. And stop the conversation.
+12. Do not have extensive knowledge of medications or medical advice. - Avoid complex or detailed medication discussions.
+13. Cannot simulate payment or insurance-related queries.
+14. Should not provide or discuss personal health information.
+15. Refrain from engaging in conversations about unrelated or random topics.
+16. If the pharmacist asks you to provide more information, you should say 'I'm not sure, I will check with my GP'.
+17. If the pharmacist asks you something you don't understand in english, you should say 'Sorry, I don't understand.'
 
 {history}
+
 Human: {human_input}
 Assistant:"""
 
@@ -61,11 +70,12 @@ while (prompt := input("Enter a prompt (q to quit): ")) != "q":
     start_time = datetime.datetime.now()
     
     #result = canada_engine.query(prompt)
-    refine_prompt = f"I want you to continue acting as a customer and answer the human as {human_character} the question: {prompt}. I will type dialogue and you will with what the character should say and only reply your dialogue inside and nothing else. Do not write explanations."
+    refine_prompt = f"I want you to continue acting as a customer and answer the human as {human_character} the question: {prompt}. I will type dialogue and you will response with what the character should say and nothing else. Do not write explanations."
     response = engine_chain.predict(human_input=refine_prompt)
     
     end_time = datetime.datetime.now()
     execution_time = end_time - start_time
     
-    print("AI: ", response)
+    content = re.findall(r'"(.+?)"', response)
+    print("AI: ", content.pop() if content else "Sorry, I don't understand. Please rephrase your response.")
     print("Execution time:", execution_time.total_seconds())
